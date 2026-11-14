@@ -7,8 +7,6 @@ import org.wpilib.hardware.bus.CANPort;
 import org.wpilib.hardware.power.PowerDistribution;
 import org.wpilib.system.RobotController;
 import org.wpilib.tunable.Tunable;
-import org.wpilib.tunable.TunableDouble;
-import org.wpilib.tunable.Tunables;
 
 import dev.doglog.DogLog;
 
@@ -19,25 +17,18 @@ import java.util.NoSuchElementException;
 
 import org.wpilib.command2.Command;
 import org.wpilib.command2.CommandScheduler;
-import org.wpilib.command2.Commands;
 
 import frc.robot.Constants.ControllerConstants;
-import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.Subsystems;
 import frc.robot.commands.SwerveJoystickCommand;
 import frc.robot.Constants.SwerveDriveConstants;
-import frc.robot.Constants.SwerveDriveConstants.FieldPositions;
 import frc.robot.commands.autos.Autos;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.NerdDrivetrain;
 import frc.robot.subsystems.SuperSystem;
-import frc.robot.subsystems.SuperSystem.HoodMode;
-import frc.robot.subsystems.SuperSystem.IntakeSlideMode;
-import frc.robot.subsystems.TurretSwivel.TurretSwivel;
 import frc.robot.util.nerd_controller.Controller;
 import frc.robot.util.nerd_logging.NerdLog;
 import frc.robot.util.nerd_logging.Reportable.LOG_LEVEL;
-import frc.robot.util.nerd_math.NerdyMath;
 
 
 public class RobotContainer {
@@ -102,27 +93,6 @@ public class RobotContainer {
         configureDriverBindings_teleop();
         configureOperatorBindings_teleop();
 
-        TunableDouble speedTuner = TunableDouble.create();
-        Tunables.publish("Test/speed", speedTuner);
-        testController.triggerRight()
-            .whileTrue(Commands.run(() -> Subsystems.shooter.setDesiredValue(NerdyMath.clamp(speedTuner.get(), 0.0, 55.0)), Subsystems.shooter));
-        
-        TunableDouble hoodTuner = TunableDouble.create();
-        Tunables.publish("Test/hood", hoodTuner);
-        testController.triggerLeft()
-            .whileTrue(Commands.run(() -> Subsystems.hood.setDesiredValue(NerdyMath.clamp(hoodTuner.get(), HoodConstants.kDownPos, HoodConstants.kUpPos)), Subsystems.hood));
-        
-        TunableDouble swivelTuner = TunableDouble.create();
-        Tunables.publish("Test/swivel", swivelTuner);
-        testController.buttonRight()
-            .onTrue(Commands.runOnce(() -> Subsystems.turretSwivel.goToAngle(swivelTuner.get())));
-        testController.buttonLeft()
-            .onTrue(Commands.runOnce(() -> Subsystems.turretSwivel.goToAngle(TurretSwivel.getRobotRelativeAngle(swerveDrive.getSwerveHeadingDegrees(), swivelTuner.get()))));
-
-        testController.bumperRight()
-            .whileTrue(superSystem.startIndexingCommand());
-        testController.bumperLeft()
-            .whileTrue(superSystem.lookAtPointCommand(FieldPositions.HUB_CENTER.get()));
     }
 
     ///////////////////////
@@ -137,17 +107,7 @@ public class RobotContainer {
         driverController.buttonA()
             .whileTrue(new SomeCommand());
         */
-       driverController.controllerLeft() // Set Drive Heading
-        .onTrue(Commands.runOnce(() -> swerveDrive.setRobotHeadingForward()));
 
-       driverController.controllerRight() // Set Pose Heading (pressed)
-        .onTrue(Commands.runOnce(() -> swerveDrive.recalibrateGyroMT1()));
-        
-        if (Constants.USE_SUBSYSTEMS) { /* bindings for subsystems */
-            driverController.triggerRight()
-                .whileTrue(superSystem.startIntakingCommand());
-            
-        }
     }
     
     ///////////////////////
@@ -158,34 +118,6 @@ public class RobotContainer {
         // Add operator controls here
         if (Constants.USE_SUBSYSTEMS) { /* bindings for subsystems */
 
-            CommandScheduler.getInstance().schedule(
-                superSystem.shootCommand(
-                    // () -> operatorController.getBumperRight(),  // eject
-                    () -> operatorController.getTriggerRight(), // spin up shoot
-                    () -> operatorController.getButtonUp()      // spin up pass
-                )
-            );
-            operatorController.bumperLeft()
-                .whileTrue(superSystem.startIntakingCommand());
-            operatorController.buttonRight()
-                .whileTrue(superSystem.startOuttakingCommand());
-            operatorController.controllerLeft()
-                .onTrue(superSystem.setIntakeSlideCommand(IntakeSlideMode.HOLD));
-            operatorController.controllerRight()
-                .onTrue(superSystem.setIntakeSlideCommand(IntakeSlideMode.IN))
-                .onFalse(superSystem.setIntakeSlideCommand(IntakeSlideMode.STOP));
-            operatorController.buttonLeft()
-                .onTrue(Subsystems.shooter.setDesiredValueCommand(45))
-                .onFalse(superSystem.stopFlywheelCommand());
-            operatorController.triggerLeft()
-                .onTrue(Subsystems.shooter.setDesiredValueCommand(37))
-                .onFalse(superSystem.stopFlywheelCommand());
-            operatorController.dpadUp()
-                .onTrue(superSystem.setHoodCommand(HoodMode.HIGH))
-                .onFalse(superSystem.setHoodCommand(HoodMode.LOW));
-            operatorController.dpadDown()
-                .onTrue(superSystem.setHoodCommand(HoodMode.MID))
-                .onFalse(superSystem.setHoodCommand(HoodMode.LOW));
         }
         
     }
